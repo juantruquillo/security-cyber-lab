@@ -1,4 +1,4 @@
-# Security Ciber Lab
+# Security Cyber Lab
 
 Laboratorio práctico de **Application Security** desarrollado con Python y FastAPI para estudiar vulnerabilidades web y de API, comprender sus causas raíz, reproducirlas de forma controlada y comprobar mecanismos de mitigación.
 
