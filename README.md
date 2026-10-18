@@ -1,175 +1,199 @@
 # Security Cyber Lab
 
-Laboratorio práctico de **Application Security** desarrollado con Python y FastAPI para estudiar vulnerabilidades web y de API, comprender sus causas raíz, reproducirlas de forma controlada y comprobar mecanismos de mitigación.
+A hands-on **Application Security** laboratory built with Python and FastAPI to study web and API vulnerabilities, understand their root causes, reproduce them in a controlled environment, and verify mitigation mechanisms.
 
-El proyecto está orientado al aprendizaje progresivo de seguridad de aplicaciones. Incluye implementaciones vulnerables con fines educativos, versiones protegidas, pruebas manuales mediante Swagger UI y pruebas automatizadas.
+The project follows a progressive, practical approach to application security. It includes intentionally vulnerable implementations for educational purposes, protected alternatives, manual testing through Swagger UI, and automated tests.
 
-> **Aviso:** este proyecto es un laboratorio educativo local. Las implementaciones vulnerables deben utilizarse únicamente en el entorno controlado del laboratorio, nunca como código de producción.
+**Language:** English | [Español](README.es.md)
+
+> **Security notice:** This is a local educational laboratory. Intentionally vulnerable implementations must only be used in the controlled lab environment and must never be deployed as production code.
 
 ---
 
-## Objetivos del proyecto
+## Table of Contents
 
-- Comprender cómo se originan las vulnerabilidades comunes en aplicaciones web y API.
-- Reproducir vulnerabilidades mediante pruebas de concepto controladas.
-- Comparar implementaciones vulnerables con sus versiones protegidas.
-- Aplicar controles de autenticación y autorización.
-- Comprender el funcionamiento de JWT, hashing de contraseñas, roles y permisos.
-- Validar comportamientos esperados mediante pruebas automatizadas.
-- Construir un portafolio práctico orientado a Application Security y, progresivamente, a pentesting.
+- [Project Goals](#project-goals)
+- [Technologies](#technologies)
+- [1. Reflected Cross-Site Scripting (XSS)](#1-reflected-cross-site-scripting-xss)
+- [2. SQL Injection](#2-sql-injection)
+- [3. Insecure Password Storage](#3-insecure-password-storage)
+- [4. IDOR / Broken Access Control](#4-idor--broken-access-control)
+  - [4.1. Basic IDOR](#41-basic-idor)
+  - [4.2. IDOR with Secure Authentication and JWT](#42-idor-with-secure-authentication-and-jwt)
+  - [4.3. Role-Based Authorization](#43-role-based-authorization)
+  - [4.4. Permission-Based Authorization](#44-permission-based-authorization)
+- [5. Test Structure](#5-test-structure)
+- [6. Manual Testing Documentation](#6-manual-testing-documentation)
+- [7. Running Locally](#7-running-locally)
+- [8. Databases and Test Data](#8-databases-and-test-data)
+- [9. Security Principles Studied](#9-security-principles-studied)
+- [10. Future Improvements](#10-future-improvements)
+- [Scope and Limitations](#scope-and-limitations)
 
-## Tecnologías
+---
 
-- **Python:** lenguaje principal.
-- **FastAPI:** desarrollo de API y endpoints de laboratorio.
-- **Uvicorn:** servidor ASGI para ejecutar la aplicación.
-- **SQLite:** almacenamiento de datos de los laboratorios.
-- **JWT:** representación y validación de tokens de autenticación.
-- **Argon2id:** hashing de contraseñas.
-- **python-jose:** manejo y validación de tokens JWT.
-- **argon2-cffi:** implementación de Argon2id.
-- **python-dotenv:** carga de variables de entorno.
-- **HTTPX:** cliente HTTP utilizado por las pruebas.
-- **Swagger UI:** exploración y ejecución manual de solicitudes.
-- **pytest / TestClient:** herramientas para ejecutar y validar pruebas automatizadas.
+## Project Goals
+
+- Understand how common web application and API vulnerabilities originate.
+- Reproduce vulnerabilities through controlled proof-of-concept tests.
+- Compare vulnerable implementations with their protected alternatives.
+- Apply authentication and authorization controls.
+- Understand JWT, password hashing, roles, and permissions.
+- Validate expected behavior through automated tests.
+- Build a practical portfolio focused on Application Security and, progressively, penetration testing.
+
+## Technologies
+
+- **Python:** Main programming language.
+- **FastAPI:** API development and laboratory endpoints.
+- **Uvicorn:** ASGI server used to run the application.
+- **SQLite:** Data storage for the laboratories.
+- **JWT:** Authentication token representation and validation.
+- **Argon2id:** Password hashing.
+- **python-jose:** JWT handling and validation.
+- **argon2-cffi:** Argon2id implementation.
+- **python-dotenv:** Environment variable loading.
+- **HTTPX:** HTTP client used by the tests.
+- **Swagger UI:** Interactive exploration and manual request execution.
+- **pytest / TestClient:** Tools for running and validating automated tests.
 
 ---
 
 # 1. Reflected Cross-Site Scripting (XSS)
 
-## Descripción
+## Description
 
-Cross-Site Scripting (XSS) es una vulnerabilidad que puede aparecer cuando una aplicación incorpora datos controlados por el usuario en una página web sin tratarlos correctamente para el contexto en el que se utilizan.
+Cross-Site Scripting (XSS) is a vulnerability that can occur when an application incorporates user-controlled data into a web page without properly handling it for the context in which it is used.
 
-Este laboratorio estudia una variante de XSS reflejado mediante un parámetro incluido directamente en una respuesta HTML.
+This laboratory studies reflected XSS through a parameter that is incorporated into an HTML response.
 
-## Endpoint vulnerable
+## Vulnerable endpoint
 
 ```http
 GET /hello-html
 ```
 
-Parámetro afectado:
+Affected parameter:
 
 ```text
 name
 ```
 
-## Causa raíz
+## Root cause
 
-La implementación vulnerable inserta directamente el parámetro en el HTML:
+The vulnerable implementation directly inserts the parameter into the HTML:
 
 ```python
-return f"<html><body><h1>Hola {name}</h1></body></html>"
+return f"<html><body><h1>Hello {name}</h1></body></html>"
 ```
 
-El navegador interpreta el contenido de la respuesta como HTML. Por ello, una entrada que contiene etiquetas puede modificar la estructura de la página y, bajo las condiciones adecuadas, ejecutar JavaScript.
+The browser interprets the response as HTML. Therefore, an input containing markup can alter the page structure and, under the appropriate conditions, execute JavaScript.
 
-## Prueba de concepto
+## Proof of concept
 
-Payload utilizado:
+Payload used:
 
 ```html
 <script>alert(1)</script>
 ```
 
-También se probó la interpretación de HTML arbitrario:
+HTML interpretation was also tested with:
 
 ```html
 <h1>HACKED</h1>
 ```
 
-Durante las pruebas originales se observó que el navegador ejecutaba el JavaScript y mostraba el encabezado HTML.
+During the original tests, the browser executed the JavaScript and displayed the HTML heading.
 
-## Impacto potencial
+## Potential impact
 
-Dependiendo del contexto y de las protecciones de la aplicación, una vulnerabilidad XSS puede permitir:
+Depending on the application context and its protections, an XSS vulnerability may allow an attacker to:
 
-- Manipular el contenido visible de una página.
-- Ejecutar JavaScript en el contexto del sitio afectado.
-- Realizar acciones en nombre del usuario bajo determinadas condiciones.
-- Acceder a información disponible para los scripts de ese contexto.
+- Manipulate the visible content of a page.
+- Execute JavaScript in the context of the affected website.
+- Perform actions on behalf of a user under certain conditions.
+- Access information available to scripts running in that context.
 
-La explotación real depende de factores como las cookies, los permisos del usuario, la política de seguridad de contenido (CSP) y las restricciones del navegador.
+Actual exploitation depends on factors such as cookies, user privileges, Content Security Policy (CSP), and browser restrictions.
 
-## Mitigación
+## Mitigation
 
-Se aplicó escaping del contenido antes de incorporarlo al HTML:
+The content was escaped before being incorporated into the HTML:
 
 ```python
 from html import escape
 
 safe_name = escape(name)
-return f"<html><body><h1>Hola {safe_name}</h1></body></html>"
+return f"<html><body><h1>Hello {safe_name}</h1></body></html>"
 ```
 
-La función `escape()` convierte determinados caracteres especiales en representaciones que el navegador interpreta como texto en lugar de como estructura HTML.
+The `escape()` function converts certain special characters into representations that the browser interprets as text rather than HTML structure.
 
-Esta solución corresponde al contexto HTML utilizado por el laboratorio. Otros contextos, como JavaScript, CSS o atributos HTML, requieren un tratamiento adecuado para cada contexto.
+This solution applies to the HTML context used in this laboratory. Other contexts, such as JavaScript, CSS, or HTML attributes, require context-appropriate handling.
 
-## Verificación
+## Verification
 
-Los payloads originales se volvieron a probar después de la mitigación.
+The original payloads were tested again after the mitigation.
 
-Resultados observados:
+Observed results:
 
-- El payload `<script>alert(1)</script>` apareció como texto.
-- No se ejecutó `alert(1)`.
-- El payload `<h1>HACKED</h1>` no creó un encabezado HTML; las etiquetas aparecieron como texto.
+- The `<script>alert(1)</script>` payload appeared as text.
+- `alert(1)` was not executed.
+- The `<h1>HACKED</h1>` payload did not create an HTML heading; the tags appeared as text.
 
-**Estado documentado: mitigación aplicada y verificada mediante las pruebas manuales realizadas.**
+**Documented status:** Mitigation implemented and verified through the manual tests performed.
 
-## Lecciones aprendidas
+## Lessons learned
 
-- Los datos proporcionados por el usuario deben considerarse no confiables.
-- La validación de entrada no sustituye el escaping de salida.
-- Reflejar una entrada en una respuesta no implica necesariamente que exista XSS.
-- El tratamiento de los datos depende del contexto en el que se utilizan.
-- Las mitigaciones deben verificarse nuevamente después de implementarse.
+- User-provided data must be treated as untrusted.
+- Input validation does not replace output escaping.
+- Reflecting input in a response does not necessarily mean that XSS exists.
+- Data handling depends on the context in which the data is used.
+- Mitigations must be retested after implementation.
 
 ---
 
 # 2. SQL Injection
 
-## Descripción
+## Description
 
-SQL Injection es una vulnerabilidad que ocurre cuando una aplicación construye consultas SQL incorporando entradas no confiables de una forma que permite modificar la estructura de la consulta.
+SQL Injection is a vulnerability that occurs when an application constructs SQL queries using untrusted input in a way that allows the query structure to be modified.
 
-Este laboratorio compara una consulta vulnerable con una consulta parametrizada.
+This laboratory compares a vulnerable query with a parameterized query.
 
-## Endpoint vulnerable
+## Vulnerable endpoint
 
 ```http
 GET /users-vulnerable/{user_id}
 ```
 
-## Causa raíz
+## Root cause
 
-La implementación vulnerable construye la consulta mediante interpolación directa:
+The vulnerable implementation constructs the query through direct interpolation:
 
 ```python
 query = f"SELECT id, username, email FROM users WHERE id = {user_id}"
 ```
 
-Cuando una entrada puede alterar la estructura de la consulta, la base de datos podría ejecutar una condición diferente de la que pretendía la aplicación.
+When input can alter the query structure, the database may execute a condition different from the one intended by the application.
 
-## Prueba de concepto
+## Proof of concept
 
-Una solicitud normal:
+A normal request:
 
 ```http
 GET /users-vulnerable/1
 ```
 
-permite consultar el usuario correspondiente al identificador `1`.
+retrieves the user associated with identifier `1`.
 
-Después se probó el siguiente valor:
+The following value was then tested:
 
 ```text
 1 OR 1=1
 ```
 
-La consulta resultante era equivalente a:
+The resulting query was equivalent to:
 
 ```sql
 SELECT id, username, email
@@ -177,47 +201,47 @@ FROM users
 WHERE id = 1 OR 1=1;
 ```
 
-Como la condición `1=1` siempre es verdadera, la consulta devolvió los tres usuarios presentes en la base de datos de prueba.
+Because the condition `1=1` is always true, the query returned all three users present in the test database.
 
-Este resultado demuestra la vulnerabilidad en el endpoint del laboratorio.
+This result demonstrates the vulnerability in the laboratory endpoint.
 
-## Impacto potencial
+## Potential impact
 
-Según la consulta, los permisos de la conexión y las funciones disponibles, una vulnerabilidad SQL Injection puede permitir:
+Depending on the query, database connection privileges, and available operations, SQL Injection may allow an attacker to:
 
-- Acceder a registros que no deberían devolverse.
-- Modificar o eliminar datos.
-- Eludir determinados controles de la aplicación.
-- Comprometer información almacenada en la base de datos.
+- Access records that should not be returned.
+- Modify or delete data.
+- Bypass certain application controls.
+- Compromise information stored in the database.
 
-El impacto concreto depende de las operaciones SQL disponibles y de los privilegios concedidos a la aplicación.
+The actual impact depends on the available SQL operations and the privileges granted to the application.
 
-## Mitigación
+## Mitigation
 
-La consulta se reemplazó por una consulta parametrizada:
+The query was replaced with a parameterized query:
 
 ```python
 query = "SELECT id, username, email FROM users WHERE id = ?"
 cursor.execute(query, (user_id,))
 ```
 
-Los parámetros se suministran por separado de la instrucción SQL. Así, la entrada se trata como un valor y no como parte de la estructura de la consulta.
+Parameters are supplied separately from the SQL statement. This allows input to be treated as a value rather than part of the query structure.
 
-## Endpoint protegido
+## Protected endpoint
 
 ```http
 GET /users-safe/{user_id}
 ```
 
-## Verificación
+## Verification
 
-Se volvió a probar el valor:
+The following value was tested again:
 
 ```text
 1 OR 1=1
 ```
 
-En la prueba documentada, el endpoint protegido no devolvió los tres usuarios. La respuesta observada fue:
+In the documented test, the protected endpoint did not return all three users. The observed response was:
 
 ```json
 {
@@ -225,30 +249,30 @@ En la prueba documentada, el endpoint protegido no devolvió los tres usuarios. 
 }
 ```
 
-Esto demuestra que el payload ya no producía el resultado de la explotación original.
+This demonstrates that the payload no longer produced the original exploitation result.
 
-La respuesta vacía depende de cómo el endpoint convierte y procesa el parámetro. No debe interpretarse como una regla universal para todas las implementaciones seguras.
+The empty response depends on how the endpoint converts and processes the parameter. It should not be interpreted as a universal response for every secure implementation.
 
-## Lecciones aprendidas
+## Lessons learned
 
-- No se deben construir consultas SQL mediante concatenación o interpolación de entradas no confiables.
-- Las consultas parametrizadas separan los valores de la estructura SQL.
-- La validación del tipo de dato puede complementar la protección, pero no sustituye una consulta correctamente parametrizada.
-- La prueba de mitigación debe repetir el escenario que permitió reproducir la vulnerabilidad.
+- SQL queries must not be constructed through concatenation or interpolation of untrusted input.
+- Parameterized queries separate values from SQL structure.
+- Data type validation can complement protection but does not replace properly parameterized queries.
+- Mitigation testing should repeat the scenario that originally reproduced the vulnerability.
 
 ---
 
 # 3. Insecure Password Storage
 
-## Descripción
+## Description
 
-Insecure Password Storage ocurre cuando una aplicación almacena contraseñas de manera inadecuada, por ejemplo, en texto plano.
+Insecure Password Storage occurs when an application stores passwords improperly, for example, in plaintext.
 
-Las contraseñas no deben almacenarse directamente ni mediante cifrado reversible como sustituto del hashing. Se recomienda utilizar algoritmos especializados para contraseñas, como Argon2id, bcrypt o scrypt.
+Passwords must not be stored directly or protected with reversible encryption as a substitute for password hashing. Specialized password-hashing algorithms such as Argon2id, bcrypt, or scrypt should be used.
 
-Este laboratorio compara dos implementaciones: una vulnerable, que almacena contraseñas en texto plano, y otra que utiliza Argon2id.
+This laboratory compares two implementations: a vulnerable version that stores plaintext passwords and a protected version that uses Argon2id.
 
-## 3.1. Implementación vulnerable
+## 3.1. Vulnerable implementation
 
 ### Endpoints
 
@@ -257,7 +281,7 @@ POST /register
 POST /login
 ```
 
-La implementación vulnerable almacena directamente la contraseña proporcionada por el usuario:
+The vulnerable implementation stores the password supplied by the user directly:
 
 ```python
 cursor.execute(
@@ -266,9 +290,9 @@ cursor.execute(
 )
 ```
 
-La consulta utiliza parámetros SQL, pero esto no protege la contraseña almacenada.
+The query uses SQL parameters, but this does not protect the stored password.
 
-La estructura conceptual de la tabla es:
+The conceptual table structure is:
 
 ```text
 users
@@ -277,35 +301,35 @@ users
 └── password_plaintext
 ```
 
-Por ejemplo, una fila podría contener:
+For example, a row might contain:
 
 ```text
-username: ejemplo
+username: example
 password_plaintext: mypassword123
 ```
 
-### Causa raíz
+### Root cause
 
-La causa raíz es guardar el valor original de la contraseña en lugar de almacenar un hash especializado para contraseñas.
+The root cause is storing the original password instead of a specialized password hash.
 
-Una consulta SQL parametrizada puede evitar una forma de SQL Injection y, al mismo tiempo, dejar las credenciales expuestas en la base de datos.
+A parameterized SQL query can prevent a form of SQL Injection while still leaving credentials exposed in the database.
 
-### Prueba de concepto
+### Proof of concept
 
-Si se tiene acceso a la base de datos del laboratorio, se puede consultar la tabla:
+If the laboratory database is accessible, the table can be queried:
 
 ```sql
 SELECT id, username, password_plaintext
 FROM users;
 ```
 
-Si aparecen las contraseñas originales, queda demostrado que la implementación almacena las credenciales en texto plano.
+If the original passwords appear in the results, this demonstrates that the implementation stores credentials in plaintext.
 
-### Impacto potencial
+### Potential impact
 
-Si una persona no autorizada obtiene una copia de la base de datos, podría leer directamente las contraseñas almacenadas. El impacto también puede extenderse a otros servicios si los usuarios reutilizan sus credenciales.
+If an unauthorized person obtains a copy of the database, they may be able to read the stored passwords directly. The impact may also extend to other services if users reuse their credentials.
 
-## 3.2. Implementación segura con Argon2id
+## 3.2. Secure implementation with Argon2id
 
 ### Endpoints
 
@@ -314,15 +338,15 @@ POST /register-secure
 POST /login-secure
 ```
 
-La versión protegida utiliza `argon2-cffi` y `PasswordHasher`.
+The protected implementation uses `argon2-cffi` and `PasswordHasher`.
 
-Antes de almacenar una contraseña, genera su hash:
+Before storing a password, the application generates its hash:
 
 ```python
 password_hash = password_hasher.hash(password)
 ```
 
-La estructura conceptual de la tabla es:
+The conceptual table structure is:
 
 ```text
 users_secure
@@ -331,77 +355,77 @@ users_secure
 └── password_hash
 ```
 
-El valor almacenado tiene una estructura similar a:
+A stored value has a structure similar to:
 
 ```text
 $argon2id$v=19$m=65536,t=3,p=4$...
 ```
 
-Este ejemplo es ilustrativo; los parámetros y el hash exacto dependen de la configuración utilizada.
+This is an illustrative example; the exact hash and parameters depend on the configuration.
 
-Argon2id genera un hash con parámetros y salt incluidos en su representación. La aplicación no necesita almacenar la contraseña original para verificarla posteriormente.
+Argon2id generates a hash representation that includes its parameters and salt. The application does not need to store the original password to verify it later.
 
-### Verificación de la contraseña
+### Password verification
 
-La implementación utiliza el verificador de Argon2id:
+The implementation uses the Argon2id verifier:
 
 ```python
 password_hasher.verify(user[2], password)
 ```
 
-Cuando la contraseña no coincide, se controla específicamente la excepción correspondiente:
+When the password does not match, the corresponding exception is handled explicitly:
 
 ```python
 except VerifyMismatchError:
-    return {"error": "Contraseña incorrecta"}
+    return {"error": "Incorrect password"}
 ```
 
-Es importante no utilizar un `except Exception` demasiado amplio para ocultar errores inesperados.
+A broad `except Exception` should not be used to conceal unexpected errors.
 
-### Verificación documentada
+### Documented verification
 
-Se probaron los escenarios de contraseña correcta e incorrecta. También se inspeccionó el contenido de `users_secure` para comprobar que se almacenaba un hash Argon2id en lugar de la contraseña original.
+Correct and incorrect password scenarios were tested. The contents of `users_secure` were also inspected to verify that an Argon2id hash, rather than the original password, was stored.
 
-### Comparación
+### Comparison
 
-| Característica | Implementación vulnerable | Implementación protegida |
+| Feature | Vulnerable implementation | Protected implementation |
 |---|---|---|
-| Tabla | `users` | `users_secure` |
-| Contraseña almacenada | Texto plano | Hash Argon2id |
-| Registro | `/register` | `/register-secure` |
-| Inicio de sesión | `/login` | `/login-secure` |
-| Verificación | Comparación directa | `PasswordHasher.verify()` |
-| Contraseña original en la tabla | Sí | No |
-| Salt | No se utiliza | Generado por el mecanismo de hashing |
+| Table | `users` | `users_secure` |
+| Stored password | Plaintext | Argon2id hash |
+| Registration | `/register` | `/register-secure` |
+| Login | `/login` | `/login-secure` |
+| Verification | Direct comparison | `PasswordHasher.verify()` |
+| Original password in the table | Yes | No |
+| Salt | Not used | Generated by the hashing mechanism |
 
-**Estado documentado:** el laboratorio incluye ambas implementaciones y pruebas manuales de registro, autenticación e inspección del almacenamiento.
+**Documented status:** The laboratory includes both implementations and manual tests for registration, authentication, and storage inspection.
 
-## Lecciones aprendidas
+## Lessons learned
 
-- Las contraseñas no deben almacenarse en texto plano.
-- El hashing de contraseñas no es lo mismo que el cifrado reversible.
-- Argon2id está diseñado para dificultar ataques de adivinación de contraseñas.
-- Las consultas parametrizadas protegen contra ciertos ataques SQL, pero no hacen seguro el almacenamiento de credenciales.
-- Los errores de autenticación deben controlarse sin ocultar fallos inesperados.
+- Passwords must not be stored in plaintext.
+- Password hashing is not the same as reversible encryption.
+- Argon2id is designed to make password-guessing attacks more expensive.
+- Parameterized queries protect against certain SQL attacks but do not make credential storage secure.
+- Authentication errors should be handled without concealing unexpected failures.
 
 ---
 
 # 4. IDOR / Broken Access Control
 
-## Descripción
+## Description
 
-Insecure Direct Object Reference (IDOR) es una vulnerabilidad de control de acceso que puede ocurrir cuando una aplicación permite solicitar un recurso mediante su identificador sin comprobar que el usuario actual tiene permiso para acceder a él.
+Insecure Direct Object Reference (IDOR) is an access-control vulnerability that can occur when an application allows a resource to be requested through its identifier without verifying that the current user is authorized to access it.
 
-En este proyecto, los laboratorios IDOR se han ampliado para estudiar no solo la comprobación de propiedad, sino también la autenticación mediante JWT, los roles y los permisos.
+The IDOR laboratories in this project have expanded beyond ownership checks to cover JWT authentication, roles, and permissions.
 
-Los cuatro módulos consolidados son:
+The four established modules are:
 
-1. IDOR básico.
-2. IDOR con autenticación segura.
-3. Autorización basada en roles.
-4. Autorización basada en permisos.
+1. Basic IDOR.
+2. IDOR with secure authentication.
+3. Role-based authorization.
+4. Permission-based authorization.
 
-## 4.1. IDOR básico
+## 4.1. Basic IDOR
 
 ### Endpoints
 
@@ -411,51 +435,51 @@ GET /accounts-vulnerable/{account_id}
 GET /accounts-protected/{account_id}
 ```
 
-El módulo compara un endpoint vulnerable con otro que comprueba la propiedad de la cuenta.
+This module compares a vulnerable endpoint with another endpoint that checks account ownership.
 
-### Causa raíz
+### Root cause
 
-La implementación vulnerable permite que un usuario autenticado solicite una cuenta mediante su identificador sin comprobar que esa cuenta le pertenece.
+The vulnerable implementation allows an authenticated user to request an account by its identifier without checking whether that account belongs to the user.
 
-Con los datos de prueba del laboratorio, Juan corresponde al usuario `1` y María al usuario `2`.
+In the laboratory test data, Juan corresponds to user `1` and María to user `2`.
 
-### Prueba de concepto
+### Proof of concept
 
-Juan inicia sesión y obtiene un token de acceso para las pruebas.
+Juan logs in and obtains an access token for testing.
 
-Al solicitar la cuenta de María mediante el endpoint vulnerable:
+When requesting María's account through the vulnerable endpoint:
 
 ```http
 GET /accounts-vulnerable/2
 ```
 
-la aplicación devuelve la información de esa cuenta, aunque Juan no sea su propietario.
+the application returns the account information, even though Juan is not its owner.
 
-La solicitud equivalente al endpoint protegido:
+The equivalent request to the protected endpoint:
 
 ```http
 GET /accounts-protected/2
 ```
 
-devuelve `403 Forbidden` cuando se utiliza el token de Juan.
+returns `403 Forbidden` when Juan's token is used.
 
-### Mitigación
+### Mitigation
 
-El endpoint protegido comprueba que el identificador de la cuenta solicitada corresponde al usuario autenticado.
+The protected endpoint checks whether the requested account identifier corresponds to the authenticated user.
 
-La identidad utilizada para esta comprobación debe proceder de un mecanismo de autenticación validado por el servidor, no de un identificador que el cliente pueda modificar libremente.
+The identity used for this check must come from a server-validated authentication mechanism, not from an identifier that the client can freely modify.
 
-### Resultado observado
+### Observed results
 
-| Escenario | Resultado |
+| Scenario | Result |
 |---|---|
-| Juan consulta la cuenta de María mediante el endpoint vulnerable | `200 OK` |
-| Juan consulta la cuenta de María mediante el endpoint protegido | `403 Forbidden` |
-| Juan utiliza una contraseña incorrecta al iniciar sesión | `401 Unauthorized` |
+| Juan requests María's account through the vulnerable endpoint | `200 OK` |
+| Juan requests María's account through the protected endpoint | `403 Forbidden` |
+| Juan attempts to log in with an incorrect password | `401 Unauthorized` |
 
-Estos resultados corresponden a las pruebas manuales y automatizadas ejecutadas en el laboratorio.
+These results correspond to the manual and automated tests performed in the laboratory.
 
-## 4.2. IDOR con autenticación segura y JWT
+## 4.2. IDOR with Secure Authentication and JWT
 
 ### Endpoints
 
@@ -465,31 +489,31 @@ GET /me-idor-secure
 GET /accounts-idor-secure/{account_id}
 ```
 
-Este módulo incorpora controles adicionales:
+This module introduces additional controls:
 
-- Verificación de contraseñas mediante Argon2id.
-- Validación de la firma del JWT.
-- Validación de la expiración del token.
-- Comprobación del identificador de usuario contenido en el token.
-- Comprobación de la existencia del usuario.
-- Verificación de la propiedad de la cuenta solicitada.
+- Password verification using Argon2id.
+- JWT signature validation.
+- Token expiration validation.
+- Validation of the user identifier contained in the token.
+- Verification that the user exists.
+- Ownership checks for the requested account.
 
-### Pruebas realizadas
+### Tests performed
 
-| Escenario | Resultado |
+| Scenario | Result |
 |---|---|
-| Inicio de sesión con credenciales válidas | `200 OK` |
-| Inicio de sesión con contraseña incorrecta | `401 Unauthorized` |
-| Consulta del perfil con token válido | `200 OK` |
-| Acceso a la cuenta propia | `200 OK` |
-| Acceso a la cuenta de otro usuario | `403 Forbidden` |
-| Consulta protegida sin token | `401 Unauthorized` |
+| Login with valid credentials | `200 OK` |
+| Login with an incorrect password | `401 Unauthorized` |
+| Profile request with a valid token | `200 OK` |
+| Access to the user's own account | `200 OK` |
+| Access to another user's account | `403 Forbidden` |
+| Protected request without a token | `401 Unauthorized` |
 
-Estos escenarios permiten estudiar la diferencia entre autenticar al usuario y autorizar el acceso a un recurso.
+These scenarios illustrate the difference between authenticating a user and authorizing access to a resource.
 
-Un JWT válido no concede automáticamente acceso a todas las cuentas: la aplicación debe verificar también los permisos aplicables a cada recurso.
+A valid JWT does not automatically grant access to every account. The application must also verify the permissions applicable to each resource.
 
-## 4.3. Autorización basada en roles
+## 4.3. Role-Based Authorization
 
 ### Endpoints
 
@@ -500,34 +524,34 @@ GET /user-area-idor-roles
 GET /admin-area-idor-roles
 ```
 
-Este módulo representa la autorización basada en roles, también conocida como **Role-Based Access Control (RBAC)**.
+This module demonstrates **Role-Based Access Control (RBAC)**.
 
-La identidad autenticada se representa mediante un objeto `CurrentUser`, que incluye información como el identificador del usuario, el nombre de usuario y su rol.
+The authenticated identity is represented by a `CurrentUser` object containing information such as the user identifier, username, and role.
 
-La autorización administrativa se aplica mediante una dependencia que comprueba el rol requerido.
+Administrative authorization is enforced through a dependency that checks the required role.
 
-### Usuarios de prueba
+### Test users
 
-| Usuario | Rol |
+| User | Role |
 |---|---|
 | Juan | `user` |
 | María | `admin` |
 
-### Pruebas realizadas
+### Tests performed
 
-| Escenario | Resultado |
+| Scenario | Result |
 |---|---|
-| Juan consulta su identidad y rol | `200 OK` |
-| Juan accede al área de usuario | `200 OK` |
-| Juan intenta acceder al área administrativa | `403 Forbidden` |
-| María accede al área administrativa | `200 OK` |
-| Solicitud protegida sin token | `401 Unauthorized` |
+| Juan retrieves his identity and role | `200 OK` |
+| Juan accesses the user area | `200 OK` |
+| Juan attempts to access the administrative area | `403 Forbidden` |
+| María accesses the administrative area | `200 OK` |
+| Protected request without a token | `401 Unauthorized` |
 
-### Lección
+### Lesson learned
 
-Los roles permiten agrupar permisos y simplificar determinadas decisiones de autorización. Sin embargo, asignar un rol no elimina la necesidad de comprobar la identidad y validar el acceso a los recursos correspondientes.
+Roles allow permissions to be grouped and simplify certain authorization decisions. However, assigning a role does not eliminate the need to verify identity and validate access to the relevant resources.
 
-## 4.4. Autorización basada en permisos
+## 4.4. Permission-Based Authorization
 
 ### Endpoints
 
@@ -538,11 +562,11 @@ GET /audit-logs-idor-permissions
 GET /manage-users-idor-permissions
 ```
 
-Este módulo amplía el control basado en roles mediante permisos específicos almacenados en SQLite.
+This module extends role-based access control through specific permissions stored in SQLite.
 
-La autorización se determina a partir de la relación entre roles y permisos, utilizando las tablas `roles`, `permissions` y `role_permissions`.
+Authorization is determined by the relationship between roles and permissions, using the `roles`, `permissions`, and `role_permissions` tables.
 
-Los permisos incluidos en el laboratorio son:
+The permissions included in the laboratory are:
 
 ```text
 read_own_profile
@@ -550,38 +574,38 @@ read_audit_logs
 manage_users
 ```
 
-### Comportamiento esperado
+### Expected behavior
 
-- Juan tiene permiso para consultar su propio perfil.
-- Juan no tiene permiso para consultar los registros de auditoría.
-- Juan no tiene permiso para administrar usuarios.
-- María, con el rol `admin`, puede acceder a los endpoints administrativos probados.
+- Juan has permission to view his own profile.
+- Juan does not have permission to view audit logs.
+- Juan does not have permission to manage users.
+- María, with the `admin` role, can access the tested administrative endpoints.
 
-### Pruebas realizadas
+### Tests performed
 
-| Escenario | Resultado |
+| Scenario | Result |
 |---|---|
-| Juan consulta su perfil | `200 OK` |
-| Juan consulta los registros de auditoría | `403 Forbidden` |
-| Juan intenta administrar usuarios | `403 Forbidden` |
-| María consulta los registros de auditoría | `200 OK` |
-| María consulta la administración de usuarios | `200 OK` |
-| Solicitud protegida sin token | `401 Unauthorized` |
+| Juan retrieves his profile | `200 OK` |
+| Juan requests audit logs | `403 Forbidden` |
+| Juan attempts to manage users | `403 Forbidden` |
+| María retrieves audit logs | `200 OK` |
+| María accesses user management | `200 OK` |
+| Protected request without a token | `401 Unauthorized` |
 
-### Lecciones aprendidas sobre IDOR
+### Lessons learned about IDOR
 
-- La autenticación identifica al usuario; la autorización determina qué puede hacer.
-- Conocer un identificador válido no concede permiso para acceder al recurso.
-- Un token válido no sustituye las comprobaciones de propiedad y autorización.
-- Los roles y los permisos representan mecanismos distintos y complementarios.
-- Las decisiones de autorización deben realizarse en el servidor.
-- Un `403 Forbidden` observado en una prueba demuestra el rechazo de ese escenario concreto, no que toda la aplicación esté libre de fallos de autorización.
+- Authentication identifies the user; authorization determines what the user can do.
+- Knowing a valid identifier does not grant permission to access a resource.
+- A valid token does not replace ownership checks or authorization controls.
+- Roles and permissions are distinct but complementary mechanisms.
+- Authorization decisions must be enforced on the server.
+- An observed `403 Forbidden` response demonstrates rejection of that specific scenario, not that the entire application is free from authorization flaws.
 
 ---
 
-# 5. Estructura de pruebas
+# 5. Test Structure
 
-Las pruebas automatizadas se encuentran separadas de los módulos funcionales, en la carpeta `tests/`.
+Automated tests are separated from the functional modules in the `tests/` directory.
 
 ```text
 tests/
@@ -592,21 +616,21 @@ tests/
 └── test_integracion_idor.py
 ```
 
-## Pruebas individuales
+## Individual tests
 
-| Archivo | Objetivo |
+| File | Purpose |
 |---|---|
-| `test_idor_basico.py` | Verificar la diferencia entre acceso vulnerable y control de propiedad. |
-| `test_idor_autenticacion_segura.py` | Verificar autenticación, JWT, perfil y propiedad de las cuentas. |
-| `test_idor_identidad_roles.py` | Verificar el acceso basado en roles. |
-| `test_idor_permisos.py` | Verificar los permisos concedidos y denegados. |
-| `test_integracion_idor.py` | Ejecutar una comprobación integrada de los cuatro módulos IDOR. |
+| `test_idor_basico.py` | Verify the difference between vulnerable access and ownership enforcement. |
+| `test_idor_autenticacion_segura.py` | Verify authentication, JWT, profile access, and account ownership. |
+| `test_idor_identidad_roles.py` | Verify role-based access. |
+| `test_idor_permisos.py` | Verify granted and denied permissions. |
+| `test_integracion_idor.py` | Run an integrated check of the four IDOR modules. |
 
-Las pruebas utilizan `TestClient` para enviar solicitudes HTTP a la aplicación y comprobar las respuestas esperadas.
+The tests use `TestClient` to send HTTP requests to the application and verify the expected responses.
 
-## Ejecutar las pruebas
+## Running the tests
 
-Desde la raíz del proyecto y con el entorno virtual activado, ejecutar cada archivo individualmente:
+From the project root, with the virtual environment activated, run each file individually:
 
 ```powershell
 python .\tests\test_idor_basico.py
@@ -616,151 +640,149 @@ python .\tests\test_idor_permisos.py
 python .\tests\test_integracion_idor.py
 ```
 
-Los cinco archivos finalizaron correctamente durante las ejecuciones documentadas del laboratorio.
+All five files completed successfully during the documented laboratory runs.
 
-**Importante:** estas pruebas validan los escenarios implementados y comprobados. No sustituyen una auditoría integral, una revisión de todas las rutas ni pruebas de seguridad exhaustivas.
+**Important:** These tests validate the implemented and tested scenarios. They do not replace a comprehensive audit, a review of every route, or exhaustive security testing.
 
 ---
 
-# 6. Documentación de pruebas manuales
+# 6. Manual Testing Documentation
 
-La guía de pruebas manuales está disponible en:
+The manual testing guide is available at:
 
 ```text
 docs/
 └── guia_pruebas_manuales_idor.md
 ```
 
-Incluye:
+It includes:
 
-- Descripción de los módulos IDOR.
-- Usuarios de prueba del laboratorio.
-- Procedimientos para ejecutar solicitudes desde Swagger UI.
-- Resultados esperados y observados.
-- Interpretación de los códigos HTTP.
-- Conclusiones de las pruebas.
+- Descriptions of the IDOR modules.
+- Laboratory test users.
+- Procedures for sending requests through Swagger UI.
+- Expected and observed results.
+- Interpretation of HTTP status codes.
+- Test conclusions.
 
-Esta guía complementa las pruebas automatizadas y permite reproducir manualmente los escenarios principales.
+This guide complements the automated tests and allows the main scenarios to be reproduced manually.
 
 ---
 
-# 7. Ejecución local
+# 7. Running Locally
 
-## Requisitos
+## Requirements
 
-- Python compatible con las dependencias del proyecto.
-- PowerShell o una terminal equivalente.
-- Visual Studio Code u otro editor.
-- Dependencias definidas en `requirements.txt`.
+- Python compatible with the project's dependencies.
+- PowerShell or an equivalent terminal.
+- Visual Studio Code or another code editor.
+- Dependencies defined in `requirements.txt`.
 
-## Activar el entorno virtual
+## Creating and activating the virtual environment
 
-Desde la raíz del proyecto:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Si el entorno virtual todavía no existe, se puede crear con:
+From the project root, create the virtual environment if it does not already exist:
 
 ```powershell
 python -m venv .venv
 ```
 
-Después de crearlo, se activa mediante el primer comando.
+Activate it:
 
-## Instalar las dependencias
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
-Con el entorno virtual activado:
+## Installing dependencies
+
+With the virtual environment activated:
 
 ```powershell
 python -m pip install -r requirements.txt
 ```
 
-## Iniciar la aplicación
+## Starting the application
 
-Desde la raíz del proyecto:
+From the project root:
 
 ```powershell
 python -m uvicorn main:app --reload
 ```
 
-La aplicación se ejecuta normalmente en:
+The application normally runs at:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-La documentación interactiva de FastAPI está disponible en:
+FastAPI's interactive documentation is available at:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-Swagger UI permite seleccionar endpoints, introducir parámetros y enviar solicitudes manuales.
+Swagger UI allows you to select endpoints, enter parameters, and send manual requests.
 
-Para finalizar el servidor, utiliza `Ctrl + C` en la terminal donde se está ejecutando.
+To stop the server, press `Ctrl + C` in the terminal where it is running.
 
 ---
 
-# 8. Bases de datos y datos de prueba
+# 8. Databases and Test Data
 
-El proyecto utiliza SQLite para almacenar datos de los distintos laboratorios.
+The project uses SQLite to store data for the different laboratories.
 
-La base de datos `auth_lab.db` contiene los datos de prueba utilizados por los módulos IDOR consolidados, incluidas las tablas relacionadas con usuarios, credenciales, cuentas, roles y permisos.
+The `auth_lab.db` database contains test data used by the established IDOR modules, including tables related to users, credentials, accounts, roles, and permissions.
 
-Los usuarios de laboratorio documentados son:
+The documented laboratory users are:
 
-| Usuario | Contraseña de laboratorio | Rol |
+| User | Laboratory password | Role |
 |---|---|---|
 | Juan | `LabUser_2026!` | `user` |
 | María | `LabAdmin_2026!` | `admin` |
 
-Estas credenciales son exclusivamente para el entorno educativo local. No deben reutilizarse en cuentas personales ni en servicios reales.
+These credentials are exclusively for the local educational environment. They must not be reused for personal accounts or real services.
 
-Las contraseñas se almacenan mediante hashes Argon2id en la base de datos de autenticación.
+Passwords are stored as Argon2id hashes in the authentication database.
 
-**Precaución:** el inicializador de `auth_database.py` no debe ejecutarse de nuevo sobre una base de datos existente si su implementación rechaza sobrescribirla. Antes de cualquier operación que pueda modificar o recrear una base de datos, debe verificarse el estado de los archivos y realizarse una copia de seguridad cuando corresponda.
-
----
-
-# 9. Principios de seguridad estudiados
-
-A través de los laboratorios se estudian los siguientes principios:
-
-1. **Validación y tratamiento de entradas:** las entradas no confiables deben procesarse según su uso.
-2. **Output encoding:** los datos insertados en HTML deben tratarse según el contexto de salida.
-3. **Consultas parametrizadas:** los valores no confiables deben separarse de la estructura SQL.
-4. **Almacenamiento seguro de contraseñas:** deben utilizarse algoritmos especializados de hashing.
-5. **Autenticación segura:** las credenciales y los tokens deben validarse antes de permitir operaciones protegidas.
-6. **Control de acceso:** cada solicitud debe verificar si el usuario tiene permiso para acceder al recurso solicitado.
-7. **Mínimo privilegio:** los usuarios deben recibir solamente los permisos necesarios.
-8. **Pruebas de seguridad:** las vulnerabilidades y sus mitigaciones deben comprobarse con escenarios reproducibles.
+**Caution:** Do not run the initializer in `auth_database.py` against an existing database if its implementation refuses to overwrite it. Before any operation that may modify or recreate a database, check the current files and make a backup when appropriate.
 
 ---
 
-# 10. Próximos pasos
+# 9. Security Principles Studied
 
-El proyecto se encuentra en desarrollo. Entre las áreas que pueden ampliarse progresivamente están:
+The laboratories cover the following principles:
 
-- Pruebas automatizadas adicionales para XSS, SQL Injection y almacenamiento de contraseñas.
-- Casos negativos adicionales para autenticación y autorización.
-- Validación de entradas y manejo consistente de errores.
-- Registro de eventos relevantes de seguridad.
-- Seguridad de APIs y controles de acceso a nivel de objeto.
-- Análisis estático de código y análisis de dependencias.
-- Integración de pruebas de seguridad en CI/CD.
-- Fundamentos de DevSecOps.
-- Introducción a seguridad de aplicaciones blockchain y contratos inteligentes.
-
-La prioridad será ampliar las capacidades del laboratorio mediante módulos y pruebas controladas, conservando los ejemplos vulnerables como material educativo y manteniendo separadas las implementaciones de aprendizaje de las versiones protegidas.
+1. **Input validation and handling:** Untrusted input must be processed according to its intended use.
+2. **Output encoding:** Data inserted into HTML must be handled according to the output context.
+3. **Parameterized queries:** Untrusted values must be separated from SQL structure.
+4. **Secure password storage:** Specialized password-hashing algorithms must be used.
+5. **Secure authentication:** Credentials and tokens must be validated before protected operations are allowed.
+6. **Access control:** Each request must verify whether the user is authorized to access the requested resource.
+7. **Least privilege:** Users should receive only the permissions they need.
+8. **Security testing:** Vulnerabilities and their mitigations should be verified through reproducible scenarios.
 
 ---
 
-## Alcance y limitaciones
+# 10. Future Improvements
 
-Security Ciber Lab es un proyecto educativo y de portafolio. Las vulnerabilidades reproducidas y las mitigaciones verificadas se limitan a los escenarios descritos y probados.
+The project is under active development. Areas for progressive expansion include:
 
-La existencia de una versión protegida no demuestra por sí sola que una aplicación sea completamente segura. Una evaluación más amplia requiere revisar el código, la configuración, todas las rutas relevantes, los controles de autorización y los posibles escenarios de abuso.
+- Additional automated tests for XSS, SQL Injection, and password storage.
+- More negative test cases for authentication and authorization.
+- Input validation and consistent error handling.
+- Logging of relevant security events.
+- API security and object-level access controls.
+- Static code analysis and dependency analysis.
+- Integration of security tests into CI/CD.
+- DevSecOps fundamentals.
+- Introduction to blockchain application security and smart contracts.
 
-**Objetivo final:** construir una base práctica y verificable en seguridad de aplicaciones, desde la comprensión de vulnerabilidades individuales hasta la implementación y validación de controles de seguridad.
+The priority is to expand the laboratory's capabilities through controlled modules and tests, preserving vulnerable examples as educational material and keeping learning implementations separate from protected alternatives.
+
+---
+
+## Scope and Limitations
+
+Security Cyber Lab is an educational and portfolio project. The reproduced vulnerabilities and verified mitigations are limited to the scenarios described and tested.
+
+The existence of a protected implementation does not, by itself, prove that an application is completely secure. A broader assessment requires reviewing the code, configuration, relevant routes, authorization controls, and potential abuse scenarios.
+
+**Long-term goal:** Build a practical and verifiable foundation in application security, progressing from understanding individual vulnerabilities to implementing and validating security controls.
