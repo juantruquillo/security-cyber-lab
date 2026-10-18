@@ -1,0 +1,5 @@
+﻿fastapi==0.142.2
+uvicorn==0.54.0
+python-jose==3.5.0
+argon2-cffi==25.1.0
+python-dotenv==1.2.4
