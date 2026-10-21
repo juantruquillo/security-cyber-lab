@@ -1,8 +1,11 @@
-
 # =============================================================================
 # PRUEBAS — MÓDULO IDOR: IDENTIDAD Y ROLES
 # Descripción:
 #   Comprueba identidad, autenticación y autorización basada en roles.
+# =============================================================================
+
+# =============================================================================
+# IMPORTACIONES
 # =============================================================================
 
 from fastapi import FastAPI
@@ -12,6 +15,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
 from idor_identidad_roles import router
 
 
@@ -49,124 +53,133 @@ def login(username: str, password: str) -> str:
         f"{response.status_code} - {response.text}"
     )
 
-    return response.json()["access_token"]
+    token = response.json()["access_token"]
 
+    assert token, f"No se recibió un token para {username}."
 
-juan_token = login(JUAN_USERNAME, JUAN_PASSWORD)
-maria_token = login(MARIA_USERNAME, MARIA_PASSWORD)
+    return token
 
 
 # =============================================================================
 # PRUEBA 1 — IDENTIDAD Y ROL DE JUAN
 # =============================================================================
 
-response = client.get(
-    "/me-idor-roles",
-    headers={"Authorization": f"Bearer {juan_token}"},
-)
+def test_identidad_y_rol_de_juan():
+    juan_token = login(JUAN_USERNAME, JUAN_PASSWORD)
 
-print("\nPRUEBA 1 — Identidad de Juan")
-print("Estado HTTP:", response.status_code)
+    response = client.get(
+        "/me-idor-roles",
+        headers={"Authorization": f"Bearer {juan_token}"},
+    )
 
-assert response.status_code == 200, response.text
-assert response.json()["username"] == "juan"
-assert response.json()["role"] == "user"
+    print("\nPRUEBA 1 — Identidad de Juan")
+    print("Estado HTTP:", response.status_code)
 
-print("Resultado: OK — Juan tiene el rol user.")
+    assert response.status_code == 200, response.text
+    assert response.json()["username"] == "juan"
+    assert response.json()["role"] == "user"
+
+    print("Resultado: OK — Juan tiene el rol user.")
 
 
 # =============================================================================
 # PRUEBA 2 — IDENTIDAD Y ROL DE MARÍA
 # =============================================================================
 
-response = client.get(
-    "/me-idor-roles",
-    headers={"Authorization": f"Bearer {maria_token}"},
-)
+def test_identidad_y_rol_de_maria():
+    maria_token = login(MARIA_USERNAME, MARIA_PASSWORD)
 
-print("\nPRUEBA 2 — Identidad de María")
-print("Estado HTTP:", response.status_code)
+    response = client.get(
+        "/me-idor-roles",
+        headers={"Authorization": f"Bearer {maria_token}"},
+    )
 
-assert response.status_code == 200, response.text
-assert response.json()["username"] == "maria"
-assert response.json()["role"] == "admin"
+    print("\nPRUEBA 2 — Identidad de María")
+    print("Estado HTTP:", response.status_code)
 
-print("Resultado: OK — María tiene el rol admin.")
+    assert response.status_code == 200, response.text
+    assert response.json()["username"] == "maria"
+    assert response.json()["role"] == "admin"
+
+    print("Resultado: OK — María tiene el rol admin.")
 
 
 # =============================================================================
 # PRUEBA 3 — JUAN ACCEDE AL ÁREA DE USUARIOS
 # =============================================================================
 
-response = client.get(
-    "/user-area-idor-roles",
-    headers={"Authorization": f"Bearer {juan_token}"},
-)
+def test_juan_accede_al_area_de_usuarios():
+    juan_token = login(JUAN_USERNAME, JUAN_PASSWORD)
 
-print("\nPRUEBA 3 — Juan accede al área de usuarios")
-print("Estado HTTP:", response.status_code)
+    response = client.get(
+        "/user-area-idor-roles",
+        headers={"Authorization": f"Bearer {juan_token}"},
+    )
 
-assert response.status_code == 200, response.text
+    print("\nPRUEBA 3 — Juan accede al área de usuarios")
+    print("Estado HTTP:", response.status_code)
 
-print("Resultado: OK — usuario autenticado autorizado.")
+    assert response.status_code == 200, response.text
+
+    print("Resultado: OK — usuario autenticado autorizado.")
 
 
 # =============================================================================
 # PRUEBA 4 — JUAN INTENTA ACCEDER AL ÁREA ADMINISTRATIVA
 # =============================================================================
 
-response = client.get(
-    "/admin-area-idor-roles",
-    headers={"Authorization": f"Bearer {juan_token}"},
-)
+def test_juan_no_accede_al_area_administrativa():
+    juan_token = login(JUAN_USERNAME, JUAN_PASSWORD)
 
-print("\nPRUEBA 4 — Juan intenta acceder al área administrativa")
-print("Estado HTTP:", response.status_code)
+    response = client.get(
+        "/admin-area-idor-roles",
+        headers={"Authorization": f"Bearer {juan_token}"},
+    )
 
-assert response.status_code == 403, (
-    f"Se esperaba 403, se recibió {response.status_code}: "
-    f"{response.text}"
-)
+    print("\nPRUEBA 4 — Juan intenta acceder al área administrativa")
+    print("Estado HTTP:", response.status_code)
 
-print("Resultado: OK — acceso administrativo denegado.")
+    assert response.status_code == 403, (
+        f"Se esperaba 403, se recibió {response.status_code}: "
+        f"{response.text}"
+    )
+
+    print("Resultado: OK — acceso administrativo denegado.")
 
 
 # =============================================================================
 # PRUEBA 5 — MARÍA ACCEDE AL ÁREA ADMINISTRATIVA
 # =============================================================================
 
-response = client.get(
-    "/admin-area-idor-roles",
-    headers={"Authorization": f"Bearer {maria_token}"},
-)
+def test_maria_accede_al_area_administrativa():
+    maria_token = login(MARIA_USERNAME, MARIA_PASSWORD)
 
-print("\nPRUEBA 5 — María accede al área administrativa")
-print("Estado HTTP:", response.status_code)
+    response = client.get(
+        "/admin-area-idor-roles",
+        headers={"Authorization": f"Bearer {maria_token}"},
+    )
 
-assert response.status_code == 200, response.text
+    print("\nPRUEBA 5 — María accede al área administrativa")
+    print("Estado HTTP:", response.status_code)
 
-print("Resultado: OK — acceso administrativo autorizado.")
+    assert response.status_code == 200, response.text
+
+    print("Resultado: OK — acceso administrativo autorizado.")
 
 
 # =============================================================================
 # PRUEBA 6 — SOLICITUD SIN TOKEN
 # =============================================================================
 
-response = client.get("/me-idor-roles")
+def test_solicitud_sin_token():
+    response = client.get("/me-idor-roles")
 
-print("\nPRUEBA 6 — Solicitud sin token")
-print("Estado HTTP:", response.status_code)
+    print("\nPRUEBA 6 — Solicitud sin token")
+    print("Estado HTTP:", response.status_code)
 
-assert response.status_code == 401, (
-    f"Se esperaba 401, se recibió {response.status_code}: "
-    f"{response.text}"
-)
+    assert response.status_code == 401, (
+        f"Se esperaba 401, se recibió {response.status_code}: "
+        f"{response.text}"
+    )
 
-print("Resultado: OK — solicitud sin autenticación rechazada.")
-
-
-# =============================================================================
-# RESUMEN
-# =============================================================================
-
-print("\nTodas las pruebas finalizaron correctamente.")
+    print("Resultado: OK — solicitud sin autenticación rechazada.")

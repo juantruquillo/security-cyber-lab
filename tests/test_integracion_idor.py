@@ -1,23 +1,26 @@
-
 # =============================================================================
 # PRUEBAS DE INTEGRACIÓN — Módulos IDOR
 # ID: TEST-IDOR-INTEGRATION-01
 #
 # Objetivo:
-# Verificar el comportamiento de los módulos IDOR registrados en main.py.
+#   Verificar el comportamiento de los módulos IDOR registrados en main.py.
 #
 # Pruebas:
-# - Inicio de sesión con credenciales válidas e inválidas.
-# - Acceso a cuentas propias y ajenas.
-# - Identidad y autorización basada en roles.
-# - Autorización basada en permisos específicos.
+#   - Inicio de sesión con credenciales válidas.
+#   - Acceso a cuentas propias y ajenas.
+#   - Identidad y autorización basada en roles.
+#   - Autorización basada en permisos específicos.
 #
 # Alcance:
-# Las pruebas utilizan TestClient y la aplicación principal.
-# Se emplea la base de datos de laboratorio existente.
+#   Las pruebas utilizan TestClient y la aplicación principal.
+#   Se emplea la base de datos de laboratorio existente.
 #
 # Nota:
-# El acceso cruzado del endpoint vulnerable es intencional y educativo.
+#   El acceso cruzado del endpoint vulnerable es intencional y educativo.
+# =============================================================================
+
+# =============================================================================
+# IMPORTACIONES
 # =============================================================================
 
 import sys
@@ -25,16 +28,15 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-# Agregar la carpeta raíz del proyecto a la ruta de búsqueda de Python.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from main import app
 
 
-# ---------------------------------------------------------------------------
-# Configuración de las pruebas
-# ---------------------------------------------------------------------------
+# =============================================================================
+# CONFIGURACIÓN DE LAS PRUEBAS
+# =============================================================================
 
 client = TestClient(app)
 
@@ -49,9 +51,9 @@ MARIA_CREDENTIALS = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Funciones auxiliares
-# ---------------------------------------------------------------------------
+# =============================================================================
+# FUNCIONES AUXILIARES
+# =============================================================================
 
 def obtener_token(login_path: str, credentials: dict) -> str:
     """Inicia sesión y devuelve el token JWT de la respuesta."""
@@ -65,11 +67,7 @@ def obtener_token(login_path: str, credentials: dict) -> str:
 
     data = response.json()
 
-    # Los módulos pueden usar nombres distintos para el campo del token.
-    token = (
-        data.get("access_token")
-        or data.get("token")
-    )
+    token = data.get("access_token") or data.get("token")
 
     assert token, (
         f"La respuesta de {login_path} no contiene un token: {data}"
@@ -84,15 +82,15 @@ def encabezado_bearer(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-# ---------------------------------------------------------------------------
-# Ejecución de pruebas
-# ---------------------------------------------------------------------------
+# =============================================================================
+# PRUEBA DE INTEGRACIÓN — MÓDULOS IDOR
+# =============================================================================
 
-def main() -> None:
-    """Ejecuta las comprobaciones de integración de los módulos IDOR."""
+def test_integracion_modulos_idor():
+    """Verifica autenticación y autorización en los cuatro módulos IDOR."""
 
     # -----------------------------------------------------------------------
-    # 1. IDOR básico
+    # 1. IDOR BÁSICO
     # -----------------------------------------------------------------------
 
     token_juan_basico = obtener_token(
@@ -110,7 +108,7 @@ def main() -> None:
 
     assert vulnerable.status_code == 200, (
         f"Se esperaba 200 en el endpoint vulnerable; "
-        f"se recibió {vulnerable.status_code}"
+        f"se recibió {vulnerable.status_code}: {vulnerable.text}"
     )
 
     # El endpoint protegido debe impedir el acceso cruzado.
@@ -121,11 +119,13 @@ def main() -> None:
 
     assert protegido.status_code == 403, (
         f"Se esperaba 403 en el endpoint protegido; "
-        f"se recibió {protegido.status_code}"
+        f"se recibió {protegido.status_code}: {protegido.text}"
     )
 
+    print("IDOR básico: acceso vulnerable y protección verificados.")
+
     # -----------------------------------------------------------------------
-    # 2. Autenticación segura y propiedad de cuentas
+    # 2. AUTENTICACIÓN SEGURA Y PROPIEDAD DE CUENTAS
     # -----------------------------------------------------------------------
 
     token_juan_seguro = obtener_token(
@@ -142,7 +142,7 @@ def main() -> None:
 
     assert perfil.status_code == 200, (
         f"Se esperaba 200 al consultar el perfil; "
-        f"se recibió {perfil.status_code}"
+        f"se recibió {perfil.status_code}: {perfil.text}"
     )
 
     cuenta_propia = client.get(
@@ -152,7 +152,7 @@ def main() -> None:
 
     assert cuenta_propia.status_code == 200, (
         f"Se esperaba 200 para la cuenta propia; "
-        f"se recibió {cuenta_propia.status_code}"
+        f"se recibió {cuenta_propia.status_code}: {cuenta_propia.text}"
     )
 
     cuenta_ajena = client.get(
@@ -162,11 +162,13 @@ def main() -> None:
 
     assert cuenta_ajena.status_code == 403, (
         f"Se esperaba 403 para una cuenta ajena; "
-        f"se recibió {cuenta_ajena.status_code}"
+        f"se recibió {cuenta_ajena.status_code}: {cuenta_ajena.text}"
     )
 
+    print("Autenticación segura: perfil y propiedad de cuentas verificados.")
+
     # -----------------------------------------------------------------------
-    # 3. Identidad y autorización basada en roles
+    # 3. IDENTIDAD Y AUTORIZACIÓN BASADA EN ROLES
     # -----------------------------------------------------------------------
 
     token_juan_roles = obtener_token(
@@ -186,7 +188,7 @@ def main() -> None:
 
     assert area_usuario.status_code == 200, (
         f"Se esperaba 200 para el área de usuario; "
-        f"se recibió {area_usuario.status_code}"
+        f"se recibió {area_usuario.status_code}: {area_usuario.text}"
     )
 
     area_admin_juan = client.get(
@@ -195,8 +197,8 @@ def main() -> None:
     )
 
     assert area_admin_juan.status_code == 403, (
-        f"Se esperaba 403 para Juan en el área de administración; "
-        f"se recibió {area_admin_juan.status_code}"
+        f"Se esperaba 403 para Juan en el área administrativa; "
+        f"se recibió {area_admin_juan.status_code}: {area_admin_juan.text}"
     )
 
     area_admin_maria = client.get(
@@ -205,12 +207,14 @@ def main() -> None:
     )
 
     assert area_admin_maria.status_code == 200, (
-        f"Se esperaba 200 para María en el área de administración; "
-        f"se recibió {area_admin_maria.status_code}"
+        f"Se esperaba 200 para María en el área administrativa; "
+        f"se recibió {area_admin_maria.status_code}: {area_admin_maria.text}"
     )
 
+    print("Roles: acceso de usuario y administrador verificado.")
+
     # -----------------------------------------------------------------------
-    # 4. Autorización basada en permisos específicos
+    # 4. AUTORIZACIÓN BASADA EN PERMISOS ESPECÍFICOS
     # -----------------------------------------------------------------------
 
     token_juan_permisos = obtener_token(
@@ -230,7 +234,7 @@ def main() -> None:
 
     assert perfil_juan.status_code == 200, (
         f"Se esperaba 200 para el perfil propio; "
-        f"se recibió {perfil_juan.status_code}"
+        f"se recibió {perfil_juan.status_code}: {perfil_juan.text}"
     )
 
     auditoria_juan = client.get(
@@ -240,7 +244,7 @@ def main() -> None:
 
     assert auditoria_juan.status_code == 403, (
         f"Se esperaba 403 para Juan en los registros de auditoría; "
-        f"se recibió {auditoria_juan.status_code}"
+        f"se recibió {auditoria_juan.status_code}: {auditoria_juan.text}"
     )
 
     usuarios_juan = client.get(
@@ -250,7 +254,7 @@ def main() -> None:
 
     assert usuarios_juan.status_code == 403, (
         f"Se esperaba 403 para Juan al gestionar usuarios; "
-        f"se recibió {usuarios_juan.status_code}"
+        f"se recibió {usuarios_juan.status_code}: {usuarios_juan.text}"
     )
 
     auditoria_maria = client.get(
@@ -260,7 +264,7 @@ def main() -> None:
 
     assert auditoria_maria.status_code == 200, (
         f"Se esperaba 200 para María en los registros de auditoría; "
-        f"se recibió {auditoria_maria.status_code}"
+        f"se recibió {auditoria_maria.status_code}: {auditoria_maria.text}"
     )
 
     usuarios_maria = client.get(
@@ -270,19 +274,8 @@ def main() -> None:
 
     assert usuarios_maria.status_code == 200, (
         f"Se esperaba 200 para María al gestionar usuarios; "
-        f"se recibió {usuarios_maria.status_code}"
+        f"se recibió {usuarios_maria.status_code}: {usuarios_maria.text}"
     )
 
-    # -----------------------------------------------------------------------
-    # Resultado
-    # -----------------------------------------------------------------------
-
-    print("Todas las pruebas de integración finalizaron correctamente.")
-    print("IDOR básico: acceso vulnerable y protección verificados.")
-    print("Autenticación segura: perfil y propiedad de cuentas verificados.")
-    print("Roles: acceso de usuario y administrador verificado.")
     print("Permisos: accesos permitidos y denegados verificados.")
-
-
-if __name__ == "__main__":
-    main()
+    print("Todas las comprobaciones de integración finalizaron correctamente.")
