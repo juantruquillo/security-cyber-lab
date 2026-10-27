@@ -1,0 +1,26 @@
+
+# =============================================================================
+# DOCKER COMPOSE — Laboratorio de Ciberseguridad
+# Objetivo:
+# Ejecutar FastAPI con secretos externos y bases SQLite persistentes.
+# =============================================================================
+
+services:
+  cyber-lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: cyber-lab
+
+    env_file:
+      - .env
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    volumes:
+      - ./auth_lab.db:/app/auth_lab.db
+      - ./security_lab.db:/app/security_lab.db
+
+    restart: unless-stopped

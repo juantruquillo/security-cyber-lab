@@ -2,11 +2,11 @@
 
 A hands-on **Application Security** laboratory built with Python and FastAPI to study web and API vulnerabilities, understand their root causes, reproduce them in a controlled environment, and verify mitigation mechanisms.
 
-The project follows a progressive, practical approach to application security. It includes intentionally vulnerable implementations for educational purposes, protected alternatives, manual testing through Swagger UI, and automated tests.
+The project follows a progressive, practical approach to application security. It includes intentionally vulnerable implementations for educational purposes, protected alternatives, manual testing through Swagger UI, automated tests, and Docker-based execution.
 
 **Language:** English | [Español](README.es.md)
 
-> **Security notice:** This is a local educational laboratory. Intentionally vulnerable implementations must only be used in the controlled lab environment and must never be deployed as production code.
+> **Security notice:** This is a local educational laboratory. Intentionally vulnerable implementations must only be used in a controlled lab environment and must never be deployed as production code or exposed to untrusted networks.
 
 ---
 
@@ -24,10 +24,11 @@ The project follows a progressive, practical approach to application security. I
   - [4.4. Permission-Based Authorization](#44-permission-based-authorization)
 - [5. Test Structure](#5-test-structure)
 - [6. Manual Testing Documentation](#6-manual-testing-documentation)
-- [7. Running Locally](#7-running-locally)
-- [8. Databases and Test Data](#8-databases-and-test-data)
-- [9. Security Principles Studied](#9-security-principles-studied)
-- [10. Future Improvements](#10-future-improvements)
+- [7. Running Locally with Python](#7-running-locally-with-python)
+- [8. Running with Docker](#8-running-with-docker)
+- [9. Databases and Test Data](#9-databases-and-test-data)
+- [10. Security Principles Studied](#10-security-principles-studied)
+- [11. Future Improvements](#11-future-improvements)
 - [Scope and Limitations](#scope-and-limitations)
 
 ---
@@ -40,6 +41,7 @@ The project follows a progressive, practical approach to application security. I
 - Apply authentication and authorization controls.
 - Understand JWT, password hashing, roles, and permissions.
 - Validate expected behavior through automated tests.
+- Practice running an application in a containerized environment.
 - Build a practical portfolio focused on Application Security and, progressively, penetration testing.
 
 ## Technologies
@@ -53,9 +55,12 @@ The project follows a progressive, practical approach to application security. I
 - **python-jose:** JWT handling and validation.
 - **argon2-cffi:** Argon2id implementation.
 - **python-dotenv:** Environment variable loading.
-- **HTTPX:** HTTP client used by the tests.
-- **Swagger UI:** Interactive exploration and manual request execution.
-- **pytest / TestClient:** Tools for running and validating automated tests.
+- **pytest:** Automated test execution.
+- **Starlette TestClient / httpx2:** HTTP testing support for the current test environment.
+- **Swagger UI:** Interactive API exploration and manual request execution.
+- **Docker:** Application containerization.
+- **Docker Compose:** Application configuration and container lifecycle management.
+- **PowerShell:** Local execution and testing on Windows.
 
 ---
 
@@ -592,7 +597,7 @@ manage_users
 | María accesses user management | `200 OK` |
 | Protected request without a token | `401 Unauthorized` |
 
-### Lessons learned about IDOR
+## Lessons learned about IDOR
 
 - Authentication identifies the user; authorization determines what the user can do.
 - Knowing a valid identifier does not grant permission to access a resource.
@@ -628,19 +633,23 @@ tests/
 
 The tests use `TestClient` to send HTTP requests to the application and verify the expected responses.
 
-## Running the tests
+## Running the tests locally
 
-From the project root, with the virtual environment activated, run each file individually:
+From the project root, with the virtual environment activated, run:
 
 ```powershell
-python .\tests\test_idor_basico.py
-python .\tests\test_idor_autenticacion_segura.py
-python .\tests\test_idor_identidad_roles.py
-python .\tests\test_idor_permisos.py
-python .\tests\test_integracion_idor.py
+python -m pytest tests/ -v
 ```
 
-All five files completed successfully during the documented laboratory runs.
+## Running the tests in Docker
+
+After building and starting the container, run:
+
+```powershell
+docker compose exec cyber-lab python -m pytest tests/ -v
+```
+
+The current automated test suite contains **24 tests**. All 24 passed during the documented Docker validation.
 
 **Important:** These tests validate the implemented and tested scenarios. They do not replace a comprehensive audit, a review of every route, or exhaustive security testing.
 
@@ -668,7 +677,7 @@ This guide complements the automated tests and allows the main scenarios to be r
 
 ---
 
-# 7. Running Locally
+# 7. Running Locally with Python
 
 ## Requirements
 
@@ -709,15 +718,8 @@ python -m uvicorn main:app --reload
 
 The application normally runs at:
 
-```text
-http://127.0.0.1:8000
-```
-
-FastAPI's interactive documentation is available at:
-
-```text
-http://127.0.0.1:8000/docs
-```
+- Application: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- Interactive API documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 Swagger UI allows you to select endpoints, enter parameters, and send manual requests.
 
@@ -725,11 +727,171 @@ To stop the server, press `Ctrl + C` in the terminal where it is running.
 
 ---
 
-# 8. Databases and Test Data
+# 8. Running with Docker
+
+Docker provides a containerized way to run the laboratory without relying on the host machine's Python virtual environment at runtime.
+
+The repository includes:
+
+```text
+Dockerfile
+.dockerignore
+compose.yaml
+```
+
+- **Dockerfile:** Defines how the application image is built.
+- **`.dockerignore`:** Excludes local files, secrets, databases, virtual environments, and caches from the build context.
+- **`compose.yaml`:** Defines the application service, environment configuration, port mapping, database mounts, and restart behavior.
+
+## Requirements
+
+- Windows, Linux, or macOS with Docker support.
+- Docker Desktop installed and running on Windows or macOS, or an appropriate Docker Engine installation.
+- Docker Compose available through `docker compose`.
+- The project's `.env` file.
+- The SQLite database files used by the laboratory.
+
+On Windows, Docker Desktop can use the WSL 2 backend.
+
+## Environment configuration
+
+The IDOR modules use the `JWT_SECRET_KEY` environment variable to sign and validate JWTs.
+
+Make sure the local `.env` file contains the required configuration. For example:
+
+```dotenv
+JWT_SECRET_KEY=replace_with_a_local_secret_value
+```
+
+The value above is a placeholder, not a production secret. Use an appropriate randomly generated secret for your local environment.
+
+**Never commit `.env` to Git or include it in the Docker image.** The Compose configuration supplies environment variables to the running container, while `.dockerignore` excludes local environment files from the image build context.
+
+Do not reuse laboratory secrets in real applications or services.
+
+## Build the image
+
+From the project root:
+
+```powershell
+docker compose build
+```
+
+This builds the application image using the `Dockerfile` and the dependencies specified in `requirements.txt`.
+
+## Start the laboratory
+
+Run:
+
+```powershell
+docker compose up -d
+```
+
+The `-d` option starts the service in the background.
+
+Check its status:
+
+```powershell
+docker compose ps
+```
+
+The service should appear as running, with the application port mapped to the host.
+
+## Access the application
+
+The Compose configuration publishes the application on the local host:
+
+- Application: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- Interactive API documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+The port mapping is restricted to `127.0.0.1`, so the application is intended to be accessed from the local machine.
+
+This restriction is particularly important because the laboratory deliberately includes vulnerable endpoints.
+
+## Run the automated tests
+
+Execute the test suite inside the running container:
+
+```powershell
+docker compose exec cyber-lab python -m pytest tests/ -v
+```
+
+A successful run should report:
+
+```text
+24 passed
+```
+
+The test dependencies, including `pytest` and `httpx2`, are installed in the current image so that the existing test suite can run inside the container.
+
+## View logs
+
+To inspect the application logs:
+
+```powershell
+docker compose logs
+```
+
+To follow the logs while the service runs:
+
+```powershell
+docker compose logs -f
+```
+
+Press `Ctrl + C` to stop following the logs. This does not stop the container.
+
+## Stop the laboratory
+
+To stop and remove the Compose container and its associated network:
+
+```powershell
+docker compose down
+```
+
+This does not delete the local SQLite files mounted into the container.
+
+To start the laboratory again later:
+
+```powershell
+docker compose up -d
+```
+
+## Database persistence
+
+The Compose configuration mounts the local database files into the container:
+
+```yaml
+volumes:
+  - ./auth_lab.db:/app/auth_lab.db
+  - ./security_lab.db:/app/security_lab.db
+```
+
+This allows the application to access the existing databases while keeping their files on the host machine.
+
+The database files are excluded from the Docker build context and are not copied into the image as part of the application source.
+
+The current configuration uses **host bind mounts**, not Docker-managed named volumes. Therefore, database persistence depends on the local files and their mount paths remaining available.
+
+Before modifying or reinitializing a database, make a backup when appropriate. Do not delete the local database files while the application depends on them.
+
+## Security considerations
+
+- Keep the laboratory bound to the local host.
+- Do not expose the application to untrusted networks.
+- Do not deploy intentionally vulnerable endpoints to production.
+- Keep `.env` and database files out of version control.
+- Do not store real personal information or production credentials in the laboratory.
+- Use only authorized, controlled environments for security testing.
+
+---
+
+# 9. Databases and Test Data
 
 The project uses SQLite to store data for the different laboratories.
 
 The `auth_lab.db` database contains test data used by the established IDOR modules, including tables related to users, credentials, accounts, roles, and permissions.
+
+The `security_lab.db` database contains test data used by the SQL Injection and password-storage modules.
 
 The documented laboratory users are:
 
@@ -742,11 +904,13 @@ These credentials are exclusively for the local educational environment. They mu
 
 Passwords are stored as Argon2id hashes in the authentication database.
 
+Database files are local laboratory data and should not be committed to Git.
+
 **Caution:** Do not run the initializer in `auth_database.py` against an existing database if its implementation refuses to overwrite it. Before any operation that may modify or recreate a database, check the current files and make a backup when appropriate.
 
 ---
 
-# 9. Security Principles Studied
+# 10. Security Principles Studied
 
 The laboratories cover the following principles:
 
@@ -758,10 +922,11 @@ The laboratories cover the following principles:
 6. **Access control:** Each request must verify whether the user is authorized to access the requested resource.
 7. **Least privilege:** Users should receive only the permissions they need.
 8. **Security testing:** Vulnerabilities and their mitigations should be verified through reproducible scenarios.
+9. **Containerization fundamentals:** Application code, runtime dependencies, environment configuration, and persistent data must be handled as distinct concerns.
 
 ---
 
-# 10. Future Improvements
+# 11. Future Improvements
 
 The project is under active development. Areas for progressive expansion include:
 
@@ -773,6 +938,7 @@ The project is under active development. Areas for progressive expansion include
 - Static code analysis and dependency analysis.
 - Integration of security tests into CI/CD.
 - DevSecOps fundamentals.
+- Additional Docker-based services coordinated with Docker Compose.
 - Introduction to blockchain application security and smart contracts.
 
 The priority is to expand the laboratory's capabilities through controlled modules and tests, preserving vulnerable examples as educational material and keeping learning implementations separate from protected alternatives.
@@ -782,6 +948,8 @@ The priority is to expand the laboratory's capabilities through controlled modul
 ## Scope and Limitations
 
 Security Cyber Lab is an educational and portfolio project. The reproduced vulnerabilities and verified mitigations are limited to the scenarios described and tested.
+
+The current Docker configuration is intended for local development and controlled experimentation. It is not a production deployment configuration.
 
 The existence of a protected implementation does not, by itself, prove that an application is completely secure. A broader assessment requires reviewing the code, configuration, relevant routes, authorization controls, and potential abuse scenarios.
 
